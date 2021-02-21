@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "sourceMap": true,
+    // TFJS doesn't compile in Typescript, so we need to skip the checks.
+    // https://www.tensorflow.org/js/tutorials/setup
+    "skipLibCheck": true,
+    "outDir": "src",
+  }
+}
