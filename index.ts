@@ -35,7 +35,9 @@ const vgg = new VGG();
 // tf.setBackend('webgl');
 // Log.info("Start Test");
 // MemoryTest.simpleAdd();
-// MemoryTest.detachLoop();
+// MemoryTest.detachLoop2();
+// MemoryTest.assignLoop();
+// MemoryTest.modelLoop();
 // Log.info("End Test");
 
 

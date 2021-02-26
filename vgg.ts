@@ -1,17 +1,70 @@
-import { imag, norm, Tensor } from "@tensorflow/tfjs";
+import { imag, norm, SymbolicTensor, Tensor } from "@tensorflow/tfjs";
 import * as tf from '@tensorflow/tfjs';
 import { Log } from './log';
 import { DEFAULT_MAX_VERSION } from "tls";
 
+class ApplyDeltaLayer extends tf.layers.Layer {
+  g: Function;
+  model: tf.LayersModel;
+  expectedY: Tensor;
+  constructor(g: Function, baseModel: tf.LayersModel, expected: Tensor) {
+    super({});
+    this.g = g;
+    this.model = baseModel;
+    this.expectedY = expected;
+  }
+
+  computeOutputShape(inputShape) { return inputShape; }
+
+  private callOne(input: tf.Tensor) {
+    const currentYTensor = this.model.predict(input);
+    const deltaY = tf.sub(this.expectedY, currentYTensor as tf.Tensor<tf.Rank>);
+    const dyTensor = this.g(input, deltaY);
+    const absTensor = tf.abs(dyTensor);
+    const maxTensor = tf.max(absTensor);
+    const scaleTensor = tf.div(0.05, maxTensor);
+    const mulTensor = tf.mul(dyTensor, scaleTensor);
+    const rndTensor = tf.randomUniform(input.shape, -0.005, 0.005);
+    const addTensor = tf.add(mulTensor, rndTensor);
+    const deltaTensor = tf.clipByValue(addTensor, 0, 1);
+    const result = tf.add(input, deltaTensor);
+
+    // const rndTensor = tf.randomUniform(input.shape, -0.005, 0.005);
+    // const result = tf.add(input, rndTensor);
+
+    return result;
+  }
+
+  call(input: tf.Tensor | tf.Tensor[], kwargs) {
+    if (input instanceof tf.Tensor) {
+      // Test does not exercies this code.
+      const result = this.callOne(input);
+      return result;
+    } else {
+      // Test does exercise this code.
+      const result = [];
+      for (const i of input) {
+        result.push(this.callOne(i));
+      }
+      return result;
+    }
+  }
+
+  // Every layer needs a unique name.
+  getClassName() { return 'ApplyDeltaLayer'; }
+}
+
 export class VGG {
   private ioCanvas: HTMLCanvasElement;
   private ioTensor: Tensor;
+  private inputVariable: tf.Variable;
   private targetNumber: number;
   private model: tf.LayersModel;
+  private deltaModel: tf.LayersModel;
   private expectedYTensor: Tensor;
   private g: Function;
   constructor() {
-    Log.info(tf.memory());
+    Log.info(tf.memory().numBytes);
     this.ioCanvas = document.createElement('canvas');
     this.ioCanvas.width = 224;
     this.ioCanvas.height = 224;
@@ -69,12 +122,22 @@ export class VGG {
         //   (message) => { Log.info(message); });
         const f = (x: Tensor) => { return this.model.predict(x) as Tensor<tf.Rank> };
         this.g = tf.grad(f);
-        this.ioTensor = this.getTensorFromCanvas();
+        this.inputVariable = tf.variable(
+          this.getTensorFromCanvas());
+        this.buildDeltaModel();
         setTimeout(() => { this.iterate(10) }, 0);
       })
       .catch((e) => {
         console.error(e);
       });
+  }
+
+  buildDeltaModel() {
+    const i = tf.input({ shape: [224, 224, 3] });
+    const adl = new ApplyDeltaLayer(
+      this.g, this.model, this.expectedYTensor);
+    const o = adl.apply(i) as SymbolicTensor;
+    this.deltaModel = tf.model({ inputs: i, outputs: o });
   }
 
   iterate(iterationCount: number) {
@@ -83,37 +146,24 @@ export class VGG {
       return;
     }
     Log.info("Iterating...");
-    Log.info(tf.memory());
-
-    const currentYTensor = this.model.predict(this.ioTensor) as Tensor<tf.Rank>;
-    const dyTensor = tf.sub(this.expectedYTensor, currentYTensor);
-    const deltaTensor = this.g(this.ioTensor, dyTensor);
-    const absTensor = tf.abs(deltaTensor);
-    const maxTensor = tf.max(absTensor);
-    const scaleTensor = tf.div(0.2, maxTensor);
-    const mulTensor = tf.mul(deltaTensor, scaleTensor);
-    const rndTensor = tf.randomUniform(this.ioTensor.shape, -0.005, 0.005);
-    const add1 = tf.add(this.ioTensor, rndTensor);
-    const add2 = tf.add(add1, mulTensor);
-    const result = tf.clipByValue(add2, 0, 1);
+    const garbage: Tensor[] = [];
+    for (let i = 0; i < 5; ++i) {
+      Log.info(tf.memory().numBytes);
+      const tmp = this.deltaModel.predict(this.inputVariable) as Tensor;
+      const tmp2 = tf.reshape(tmp, this.inputVariable.shape);
+      this.inputVariable.assign(tmp2);
+      garbage.push(tmp);
+      garbage.push(tmp2);
+      Log.info(`Iteration: ${i}`);
+    }
+    for (const t of garbage) {
+      t.dispose();
+    }
     Log.info('Getting result value...')
-    result.data()
+    this.inputVariable.data()
       .then((resultData) => {
         this.renderToCanvas(resultData);
-        this.ioTensor.dispose();
-        currentYTensor.dispose();
-        dyTensor.dispose();
-        deltaTensor.dispose();
-        absTensor.dispose();
-        maxTensor.dispose();
-        scaleTensor.dispose();
-        mulTensor.dispose();
-        rndTensor.dispose();
-        add1.dispose();
-        add2.dispose();
-        result.dispose();
-        Log.info('Assigning value.  Ready to start again.');
-        this.ioTensor = tf.tensor(resultData, [1, 224, 224, 3]);
+        Log.info('Rendered.');
         setTimeout(() => { this.iterate(iterationCount - 1); });
       });
   }
