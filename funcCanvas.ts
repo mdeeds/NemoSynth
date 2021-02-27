@@ -3,6 +3,7 @@ export class FuncCanvas {
   func: Float32Array;
   constructor(container: HTMLElement) {
     this.canvas = document.createElement('canvas');
+    this.canvas.classList.add('funcCanvas');
     this.canvas.width = 100;
     this.canvas.height = 100;
     this.canvas.tabIndex = 1000;
@@ -22,6 +23,7 @@ export class FuncCanvas {
 
   renderLoop() {
     const ctx = this.canvas.getContext('2d');
+    ctx.fillStyle = '#f29';
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     for (let i = 0; i < this.func.length; ++i) {
       const v = this.func[i];

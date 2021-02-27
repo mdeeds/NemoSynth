@@ -41,6 +41,7 @@ import { VGG } from './vgg';
 // MemoryTest.modelLoop();
 // Log.info("End Test");
 
+tf.setBackend('cpu');
 function main() {
   const s = new Synth();
 }

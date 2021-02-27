@@ -1,4 +1,5 @@
 import { FuncCanvas } from "./funcCanvas";
+import { OneOneModel } from "./oneOneModel";
 
 export class Synth {
   audioCtx: AudioContext;
@@ -16,9 +17,8 @@ export class Synth {
     const body = document.getElementsByTagName('body')[0];
     const div = document.createElement('div');
     div.innerText = "Click here for focus!";
+    div.classList.add('button');
     div.tabIndex = 1;
-    div.contentEditable = "true";
-    div.spellcheck = false;
     body.appendChild(div);
     div.addEventListener('click', () => { this.initialize() });
     div.addEventListener('keydown', this.handleKey.bind(this));
@@ -29,6 +29,17 @@ export class Synth {
     this.adsFunc = new FuncCanvas(funcDiv);
     this.rFunc = new FuncCanvas(funcDiv);
     this.lowPassFunc = new FuncCanvas(funcDiv);
+
+    const o = new OneOneModel();
+    const b = document.createElement('span');
+    b.innerText = 'Boink'
+    b.classList.add('button');
+    b.addEventListener('click', (ev) => {
+      o.learnFromFunction(this.lowPassFunc).then((history) => {
+        o.applyToFunction(this.lowPassFunc);
+      })
+    });
+    body.appendChild(b);
   }
 
   initialize() {
@@ -38,7 +49,7 @@ export class Synth {
     this.audioCtx = new AudioContext();
 
     this.oscilatorNode = new OscillatorNode(
-      this.audioCtx, { type: 'triangle' });
+      this.audioCtx, { type: 'square' });
     this.oscilatorNode.frequency.setValueAtTime(256, this.audioCtx.currentTime);
 
     this.lowPassNode = new BiquadFilterNode(this.audioCtx,
@@ -96,6 +107,13 @@ export class Synth {
     }
     return result;
   }
+  octavateCurve(curve: Float32Array, baseFreq: number, octaves: number) {
+    const result: number[] = [];
+    for (const v of curve) {
+      result.push(baseFreq * Math.pow(2, (octaves * v)));
+    }
+    return result;
+  }
 
   setAmplitude(a: number) {
     let t = this.audioCtx.currentTime;
@@ -110,9 +128,7 @@ export class Synth {
       this.gainNode.gain.setValueCurveAtTime(this.adsFunc.func, t, 2.0);
       const currentFreq = this.oscilatorNode.frequency.value;
       const cutoff =
-        this.offsetCurve(
-          this.scaleCurve(
-            this.lowPassFunc.func, currentFreq * 32), currentFreq);
+        this.octavateCurve(this.lowPassFunc.func, currentFreq, 8);
       this.lowPassNode.frequency.setValueCurveAtTime(cutoff, t, 2.0);
     }
   }

@@ -1,0 +1,12 @@
+.funcCanvas {
+  margin: 3px;
+  padding: 3px;
+  background-color: black;
+  border: solid 2px #f29;
+  border-radius: 3px;
+}
+
+.button {
+  border: outset 3px #f29;
+  box-shadow: 4px black;
+}
