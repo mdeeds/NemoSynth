@@ -2,9 +2,9 @@ import * as tf from '@tensorflow/tfjs';
 import { Log } from './log';
 import { MemoryTest } from './memoryTest';
 import { SmokeTest } from './smokeTest';
+import { Synth } from './synth';
 import { VGG } from './vgg';
 
-// tf.setBackend('cpu');
 
 // The following statistics are for 44,800 samples
 // Just building a single embedding.  (E.g. half the cost function.)
@@ -24,13 +24,14 @@ import { VGG } from './vgg';
 // "numDataBuffers":192,045,
 // "numBytes":49,537,940}
 
-// SmokeTest.smoke();
+//tf.setBackend('cpu');
+//SmokeTest.smoke();
 
 
 
-tf.setBackend('webgl');
+//tf.setBackend('webgl');
 // tf.setBackend('cpu');
-const vgg = new VGG();
+//const vgg = new VGG();
 
 // tf.setBackend('webgl');
 // Log.info("Start Test");
@@ -40,4 +41,8 @@ const vgg = new VGG();
 // MemoryTest.modelLoop();
 // Log.info("End Test");
 
+function main() {
+  const s = new Synth();
+}
 
+setTimeout(main);
