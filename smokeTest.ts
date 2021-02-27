@@ -14,7 +14,7 @@ export class SmokeTest {
       SmokeTest.smokeAudioDampedSpring(clip);
       // SmokeTest.smokeGradientLow(clip);
       // SmokeTest.smokeGradientSpring(clip);
-      // SmokeTest.smokeGradientDampedSpring(clip);
+      SmokeTest.smokeGradientDampedSpring(clip);
     });
   }
 
@@ -218,13 +218,14 @@ export class SmokeTest {
       Render.addCanvases(current);
       const finalValue = Model.getSpringOutputTensor(current, earK);
       Render.addCanvases(finalValue);
-      const gradient: Tensor = gradientApplier(current);
-      const currentError = f(current).dataSync()[0];
+      const dy = f(current);
+      const gradient: Tensor = gradientApplier(current, dy);
+      const currentError = dy.dataSync()[0]
       console.log(`SSE: ${currentError}`);
       console.log(`MinGrad: ${gradient.min().dataSync()}`);
       console.log(`MaxGrad: ${gradient.max().dataSync()}`);
       console.log(`Learning rate: ${learningRate}`);
-      current = tf.add(current, tf.mul(gradient, learningRate));
+      current = tf.sub(current, tf.mul(gradient, learningRate));
       currentData = current.dataSync();
       current = tf.tensor(currentData, current.shape);
     }
